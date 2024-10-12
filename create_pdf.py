@@ -492,7 +492,7 @@ def create_final_pdf(data):
 
     elements.append(Spacer(1, (0.3 * inch)))
     print(objStr["_id"])
-    qr_data = f"http://localhost:5500?id={objStr['_id']}"  # QR kodda ko'rsatiladigan ma'lumot (URL, matn, va hokazo)
+    qr_data = f"https://pincode-rose.vercel.app?id={objStr['_id']}"  # QR kodda ko'rsatiladigan ma'lumot (URL, matn, va hokazo)
     qr = qrcode.QRCode(
         version=1,  # QR kod hajmi
         error_correction=qrcode.constants.ERROR_CORRECT_H,
