@@ -497,7 +497,7 @@ def create_final_pdf(data):
 
     # QR kod yaratish
     qr = qrcode.QRCode(
-        version=5,  # Kattaroq versiya tanlash (1-40 oralig'ida)
+        version=6,  # Kattaroq versiya tanlash (1-40 oralig'ida)
         error_correction=qrcode.constants.ERROR_CORRECT_H,  # O'xshash xatolarni to'g'rilash darajasi (H = yuqori)
         box_size=20,  # Har bir qutining o'lchamini kattalashtirish
         border=4,  # Chekka qirralarni kattalashtirish
