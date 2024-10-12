@@ -22,7 +22,6 @@ if not os.access(".", os.W_OK):
     print("Yozish ruxsati yo'q")
 
 
-
 def add_page_number(canvas, doc, date_time=None, line_color=colors.black, font_size=8):
     page_number = canvas.getPageNumber()  # Get the current page number
     
@@ -44,6 +43,7 @@ def add_page_number(canvas, doc, date_time=None, line_color=colors.black, font_s
     canvas.line(0.7 * inch, 0.5 * inch, 202.78 * mm, 0.5 * inch)
     canvas.line(0.7 * inch, 11.2 * inch, 202.78 * mm, 11.2 * inch)
 
+
 # Register custom fonts
 def register_custom_fonts():
     font_dir = "fonts"  # Directory where font files are located
@@ -63,6 +63,7 @@ def register_custom_fonts():
         else:
             raise FileNotFoundError(f"Font file not found: {font_path}")
 
+
 def format_number_with_spaces(number):
     return f"{number:,}".replace(",", " ")
 
@@ -78,7 +79,7 @@ def convert_timestamp(ms_timestamp):
         str: "YYYY-MM-DD" formatidagi sana.
     """
     # Agar timestamp string bo'lsa, uni integerga aylantirish
-    if isinstance(ms_timestamp,int):
+    if isinstance(ms_timestamp, int):
         ms_timestamp = ms_timestamp
     else:
         return ms_timestamp
@@ -92,6 +93,7 @@ def convert_timestamp(ms_timestamp):
     date_str = dt.strftime('%Y-%m-%d')
     
     return date_str
+
 
 # Create the final PDF
 def create_final_pdf(data):
@@ -110,7 +112,7 @@ def create_final_pdf(data):
 
     # Generate PDF filename with current timestamp
     current_time = datetime.now().strftime("%H-%M-%S")
-    #output_path = f"output_with_custom_font_{current_time}.pdf"
+    # output_path = f"output_with_custom_font_{current_time}.pdf"
 
     # Initialize the PDF document
     doc = SimpleDocTemplate(
@@ -145,7 +147,7 @@ def create_final_pdf(data):
         wordWrap="CJK",  # Enables word wrapping
         alignment=TA_CENTER,  # Matnni markazga hizalash
     )
-    custom_normal_footer= ParagraphStyle(
+    custom_normal_footer = ParagraphStyle(
         name="CustomNormal",
         parent=styles["Normal"],
         fontName="CustomFontReg",
@@ -253,7 +255,7 @@ def create_final_pdf(data):
 
     # 2. Image (Rasm)
     image_path = "./image/logo.png"  # Rasm faylini to'g'ri yo'lga o'zgartiring
-    #print(os.getcwd())
+    # print(os.getcwd())
     if os.path.exists(image_path):
         logo = Image(image_path)
         logo.drawWidth = 25.2 * mm
@@ -359,7 +361,7 @@ def create_final_pdf(data):
                     "RIGHT",
                 ),  # O'ng ustun uchun matnni o'ngga hizalash
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 12),  # Pastki padding
-                #('GRID', (0, 0), (-1, -1), 0.5, colors.grey),  # Chegaralarni qo'shish
+                # ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),  # Chegaralarni qo'shish
             ]
         )
     )
@@ -383,7 +385,7 @@ def create_final_pdf(data):
     )
 
     total_salary = 0
-    total_tax=0
+    total_tax = 0
     for salary_entry in obj["salaries"]:
         salary = salary_entry['salary']
         tax = salary_entry['tax']
@@ -400,7 +402,6 @@ def create_final_pdf(data):
         else:
              tax = 0
         total_tax += tax
-    
 
     elements.append(Paragraph(f"Total estimated salary: {format_number_with_spaces(total_salary)}", deja_sans_left))
     elements.append(Spacer(0.5, 12))
@@ -491,19 +492,24 @@ def create_final_pdf(data):
     elements.append(table)
 
     elements.append(Spacer(1, (0.3 * inch)))
-    print(objStr["_id"])
-    qr_data = f"https://pincode-rose.vercel.app?id={objStr['_id']}"  # QR kodda ko'rsatiladigan ma'lumot (URL, matn, va hokazo)
+    qr_data = f"https://pincode-rose.vercel.app?id={objStr['_id']}"
+
+
+    # QR kod yaratish
     qr = qrcode.QRCode(
-        version=1,  # QR kod hajmi
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
+        version=5,  # Kattaroq versiya tanlash (1-40 oralig'ida)
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  # O'xshash xatolarni to'g'rilash darajasi (H = yuqori)
+        box_size=20,  # Har bir qutining o'lchamini kattalashtirish
+        border=4,  # Chekka qirralarni kattalashtirish
     )
+
     qr.add_data(qr_data)
     qr.make(fit=True)
+
+    # QR kodni rasmga aylantirish
     qr_img = qr.make_image(fill_color="black", back_color="white")
 
-    # 2. QR kodni xotirada saqlash uchun BytesIO obyektini yaratish
+    # QR kodni xotirada saqlash uchun BytesIO obyektini yaratish
     qr_buffer = BytesIO()
     qr_img.save(qr_buffer, format="PNG")  # QR kodni xotiraga PNG formatida saqlash
     qr_buffer.seek(0)  # Bufferning boshlanishiga qaytish
@@ -525,18 +531,17 @@ def create_final_pdf(data):
     pin_code = Paragraph(str(objStr["pin"]), custom_normal_bold)
 #    pin_code = Paragraph(f"{obj["pin"]}", custom_normal_bold)
     qr_code_img = Image(
-        qr_buffer, width=1.2 * inch, height=1.2*inch
+        qr_buffer, width=1.2 * inch, height=1.2 * inch
     )  # QR kod rasm o'lchamini sozlash
 
     left_column_width = 5.28 * inch
     center_column_width = 0.8 * inch
     right_column_width = 1.2 * inch
-
     
     # Jadvalga QR kodni kiritish
     table3 = Table(
         [[footer, pin_code, qr_code_img]],
-        colWidths=[left_column_width,  center_column_width,right_column_width],
+        colWidths=[left_column_width, center_column_width, right_column_width],
     )  # Har bir ustunning kengligi 50%
 
     table3.setStyle(
@@ -548,7 +553,7 @@ def create_final_pdf(data):
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                #("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                # ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
             ]
         )
     )
@@ -558,11 +563,9 @@ def create_final_pdf(data):
         onFirstPage=lambda canvas, doc: add_page_number(canvas, doc, date_time="2024-10-08 14:22:00", line_color=colors.black, font_size=8),
         onLaterPages=lambda canvas, doc: add_page_number(canvas, doc, date_time="2024-10-08 14:22:00", line_color=colors.black, font_size=8)
     )
-    #print(f"Final PDF with custom font created successfully: {output_path}")
+    # print(f"Final PDF with custom font created successfully: {output_path}")
     buffer.seek(0) 
     return buffer
-
-
 
 # if __name__ == "__main__":
 #         input_data = sys.stdin.read()  # Standard inputdan o'qish
