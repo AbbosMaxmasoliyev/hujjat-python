@@ -252,7 +252,7 @@ def create_final_pdf(data):
     para1 = Paragraph("Single Portal of Interactive Public Services", deja_serif_bold)
 
     # 2. Image (Rasm)
-    image_path = "/image/logo.png"  # Rasm faylini to'g'ri yo'lga o'zgartiring
+    image_path = "./image/logo.png"  # Rasm faylini to'g'ri yo'lga o'zgartiring
     #print(os.getcwd())
     if os.path.exists(image_path):
         logo = Image(image_path)
@@ -262,7 +262,7 @@ def create_final_pdf(data):
         logo = Paragraph("Rasm topilmadi", custom_normal)
      #   print(f"Rasm fayli topilmadi: {image_path}")
 
-    gov_image = "/image/gov_logo.png"
+    gov_image = "./image/gov_logo.png"
     if os.path.exists(gov_image):
         gov_logo = Image(gov_image)
         gov_logo.drawHeight = 9 * mm
