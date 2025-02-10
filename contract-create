@@ -1,0 +1,479 @@
+# -*- coding: utf-8 -*-
+from docx import Document
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.shared import Pt, Cm
+import time
+from datetime import datetime
+from io import BytesIO
+
+
+def format_number_with_spaces(n):
+    """ Berilgan sonni 3 xonali bo'laklarga ajratib, oraliq ochilgan holda qaytaradi. """
+    chunks = []
+    
+    while n > 0:
+        chunks.insert(0, str(int(n) % 1000).zfill(3))  # Har bir bo‘lakni uch xonali qilish
+        n //= 1000  # Keyingi bo‘lakni olish
+    
+    formatted_number = " ".join(chunks).lstrip("0")  # Oraliq bilan qo‘shish va boshidagi nolni olib tashlash
+    return formatted_number
+
+
+
+def number_to_words(n):
+    if n == 0:
+        return "nol"
+
+    ones = ["", "bir ", "ikki ", "uch ", "to\u2018rt ", "besh ", "olti ", "yetti ", "sakkiz ", "to\u2018qqiz "]
+    tens = ["", "o\u2018n ", "yigirma ", "o\u2018ttiz ", "qirq ", "ellik ", "oltmish ", "yetmish ", "sakson ", "to\u2018qson "]
+    thousands = ["", "ming", "million", "milliard", "trillion"]
+
+    words = []
+    chunk_count = 0
+
+    while n > 0:
+        chunk = n % 1000  # Har 3 xonani ajratamiz (yuzliklar)
+        if chunk > 0:
+            chunk_words = []
+            if chunk >= 100:
+                chunk_words.append(ones[chunk // 100] + " yuz")
+                chunk %= 100
+            if chunk >= 10:
+                chunk_words.append(tens[chunk // 10])
+                chunk %= 10
+            if chunk > 0:
+                chunk_words.append(ones[chunk])
+
+            words.insert(0, " ".join(chunk_words) + f" {thousands[chunk_count]}".strip())
+
+        n //= 1000
+        chunk_count += 1
+
+    return " ".join(words).strip()
+
+
+def convert_number_to_words(amount):
+    somqismi = int(amount)
+    tiyin_qismi = round((amount - somqismi) * 100)
+
+    somsozlar = number_to_words(somqismi) + " so\u2018m" if somqismi > 0 else ""
+    tiyin_sozlar = number_to_words(tiyin_qismi) + " tiyin" if tiyin_qismi > 0 else ""
+
+    if somqismi and tiyin_qismi:
+        return f"{somsozlar} {tiyin_sozlar}".strip()
+    return somsozlar or tiyin_sozlar
+
+
+
+
+def monthInUzbek(month):
+    months = {
+        1: "Yanvar",
+        2: "Fevral",
+        3: "Mart",
+        4: "Aprel",
+        5: "May",
+        6: "Iyun",
+        7: "Iyul",
+        8: "Avgust",
+        9: "Sentabr",
+        10: "Oktabr",
+        11: "Noyabr",
+        12: "Dekabr"
+    }
+    return months.get(month, "Noma'lum oy")
+
+
+def create_contract(contract_number, city,  director_name, customer_name, passport_seria, contract_summ, contract_dollar):
+
+    # Word hujjatini yaratamiz
+    doc = Document()
+
+    # SHARTNOMA \u2116 ________
+    title = doc.add_paragraph()
+    run = title.add_run(f'SHARTNOMA \u2116 {contract_number}')
+    run.bold = True
+    run.font.size = Pt(14)
+    title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    table = doc.add_table(rows=1, cols=2)
+    table.autofit = True
+
+    # Chap tomonda Toshkent Shahar
+    cell_left = table.cell(0, 0)
+    p_left = cell_left.paragraphs[0]
+    p_left.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+    p_left.add_run("Toshkent Shahar")
+
+    # O‘ng tomonda sana
+    cell_right = table.cell(0, 1)
+    p_right = cell_right.paragraphs[0]
+    p_right.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+    p_right.add_run(f'"{datetime.now().strftime("%d")}"  "{monthInUzbek(int(datetime.now().strftime("%m")))}" {datetime.now().strftime("%Y")} yil')
+
+    # Kirish qismi, birinchi qator 1cm chetga surilgan
+    intro = doc.add_paragraph()
+    intro.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    intro.add_run(
+        '\u201CDREAM INTERNATIONAL AGENCY\u201D xususiy korxonasi (keying o\u2018rinlarda \u201CBajaruvchi\u201D deb yuritiladi) '
+        f'nomidan nizom asosida ish yurituvchi boshqaruvchisi {director_name} hamda fuqaro '
+        f'{customer_name} fuqarolik pasporti Seriyasi va raqami {passport_seria} asosida harakat qiluvchi '
+        '(Bundan keyingi matnda \u201CBajaruvchi\u201D deb yuritiladi) mazkur shartnomani quyidagilar haqida tuzdilar.'
+    )
+
+    # 1. SHARTNOMA PREDMETI katta harflarda va o‘rtada
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('1. SHARTNOMA PREDMETI')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+    first_first = doc.add_paragraph()
+    first_first.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    first_first.add_run(
+        '1.1 Mazkur shartnomaning shartlariga asosan bajaruvchi buyurtmachining talabiga asosan shartnomada belgilab qo\u2018yilgan maslahat-konsultativ xizmatlarini ko\u2018rsatadi.  Buyurtmachi esa o\u2018zining talabiga asosan bajarilishi ko\u2018zda tutilgan maslahat-konsultativ va firma xizmatlari uchun kelishilgan haqni to\u2018lash majburiyatini o\u2018z zimmasiga oladi.'
+    )
+
+
+    first_two = doc.add_paragraph("1.2 Mazkur shartnomaga binoan ko\u2018rsatiladigan maslahat-konsultativ xizmatlar ")
+    first_two.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+    # "Janubiy Koreya" s\u2018zini bold qilish
+    run = first_two.add_run("Janubiy Koreya")
+    run.bold = True  # Qalin (bold) format
+
+    # Qolgan matnni q\u2018shish
+    first_two.add_run(" o\u2018quv programmasi asosida olib boriladi.")
+
+
+
+
+    first_third = doc.add_paragraph()
+    first_third.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    first_third.add_run(
+        '1.3 Mazkur shartnomaga binoan ko\u2018rsatiladigan maslahat-konsultativ xizmatlarni ko\u2018rsatish davomida bajaruvchi qo\u2018shimcha uchinchi yuridik yoki jismoniy shaxslarni jalb qilish huquqiga ega.'
+    )
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('2. SHARTNOMA BAHOSI VA HISOBLASHISH TARTIBI')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+    second_one = doc.add_paragraph("2.1. Shartnoma bahosi")
+    second_one.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+    # "Janubiy Koreya" s\u2018zini bold qilish
+    run = second_one.add_run(" \u201CBOSHQA SHARTLAR\u201D")
+    run.bold = True  # Qalin (bold) format
+
+    # Qolgan matnni q\u2018shish
+    second_one.add_run(" qismida belgilanadi.")
+
+
+    second_two = doc.add_paragraph("2.2 Bajarilgan axborot-maslahat va firma xizmatlari bo\u2018yicha hisob-kitob shartnomaning ")
+    second_two.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+    # "Janubiy Koreya" s\u2018zini bold qilish
+    run = second_two.add_run(" \u201CBOSHQA SHARTLAR\u201D")
+    run.bold = True  # Qalin (bold) format
+
+    # Qolgan matnni q\u2018shish
+    second_two.add_run("  qismida belgilangan tartibda amalga oshiriladi.")
+
+
+
+    second_third = doc.add_paragraph()
+    second_third.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    second_third.add_run(
+        '2.3 Shartnomaga asosan to\u2018lov tartibi Buyurtmachi tomonidan Bajaruvchi hisob raqamiga pul o\u2018tkazish yoki naqd pul to\u2018lash yo\u2018li bilan amalga oshiriladi.'
+    )
+
+
+
+    second_fourth = doc.add_paragraph()
+    second_fourth.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    second_fourth.add_run(
+        ' 2.4 Hisob-kitob hujjatlarida bank muassasasi shtampida ko\u2018rsatilgan va pul mablag\u2018lari haqiqatan hisob raqamiga kelib tushgan sana, to\u2018lov to\u2018langanligi to\u2018grisidagi qayd kuni, shartnoma bo\u2018yicha Buyurtmachining majburiyatlari bajarilgan sana hisoblanadi.'
+    )
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('TARAFLARNING MAJBURIYATLARI')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+
+
+    third_one = doc.add_paragraph()
+    third_one.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    run = third_one.add_run(
+        "Buyurtmachining majburiyatlari: "
+    )
+    run.bold = True
+
+    third_one.add_run("Shartnomada ko\u2018rsatilgan tartibda va muddatda maslahat-konsultativ xizmatlarining haqqini to\u2018lash;")
+
+
+
+    third_two = doc.add_paragraph("Bajaruvchi tomonidan shartnomada ko\u2018rsatilgan maslahat-konsultativ xizmatlarini sifatli amalga oshirilishi uchun")
+    third_two.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    run = third_two.add_run(
+        " buyurtmachi tomonidan "
+    )
+    run.bold = True
+
+    third_two.add_run("tegishli ma\u2019lumot va hujjatlarni o\u2018z vaqtida taqdim etish;")
+    third_three = doc.add_paragraph("\u201CBuyurtmachi\u201CD \u201CBajaruvchi\u201D bilan shartnoma tuzgan kundan boshlab o\u2018zi haqidagi ma\u2019lumotlarni boshqa chet elda ta\u2019lim olishga konsultativ-axborot xizmatlarini amalga oshiruvchi boshqa korxonalarga, shuningdek boshqa shaxslarga berishi taqiqlanadi. Agar \u201CBuyurtmachi\u201CD boshqa konsultativ-axborot xizmatlarini amalga oshiruvchi korxonalar yordamida Chet el Universitetiga kirgan taqdirda yoki boshqa \u201CBuyurtmachi\u201CDga aloqador uchinchi shaxslar tomonidan \u201CBajaruvchi\u201D faoliyatiga g\u2018ayriodatiy tarzda aralashilgan taqdirda \u201CBajaruvchi\u201Dning tashabbusi bilan shartnoma bekor qilinadi, hamda \u201CBuyurtmachi\u201CD BHM ning 30 barobari miqdoridagi summani \u201CBajaruvchi\u201D ning hisob raqamiga \u2018tkazish majburiyatini oladi.")
+    third_three.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+
+    third_four = doc.add_paragraph()
+    third_four.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    run = third_four.add_run(
+        "Bajaruvchining majburiyatlari:"
+    )
+    run.bold = True
+
+
+
+    third_five = doc.add_paragraph("Shartnomaga asosan ko\u2018rsatilgan maslahat-konsultativ natijasida yig\u2018ilgan hujjatlarni  Buyurtmachiga va Universitetga topshirish. Bunda Bajaruvchi tomonidan quydagilar amalga oshiriladi.")
+    third_five.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+    third_six = doc.add_paragraph(
+        "- Hujjatlar notarizatsiya qilish\n"
+    "- Notarizatsiya qilingan hujjatlarni apostil qilish\n"
+    "- Kerakli hujjatlarni tarjima qilish\n" 
+    "- Tayyorlangan hujjatlarni Universitetga pochta orqali jo\u2018natish.\n" 
+    "- Universitet suhbatiga tayyorlash\n"
+    "- Elchixona uchun hujjatlarni tayyorlashni nazorat qilish\n"
+    "- Elchixona uchun tayyorlangan hujjatlarni natarizatsiya, tarjima va appostil qilish\n"
+    "- Janubiy Koreyada kutib olish\n"
+    )
+    third_six.paragraph_format.left_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+
+
+    third_seven= doc.add_paragraph("Uchinchi shaxslarga buyurtmachining roziligisiz Buyurtmachiga tegishli hujjatlarni oshkor qilmaslik.")
+    third_seven.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+
+    third_eight = doc.add_paragraph()
+    third_eight.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    run = third_eight.add_run(
+        "Buyurtmachining huquqlari: "
+    )
+    run.bold = True
+
+    third_eight.add_run("Bajaruvchining faoliyatiga aralashmagan va halaqit qilmagan holda maslahat-konsultativ xizmatlar holati yuzasidan axborot olishi.")
+
+
+
+
+    third_nine = doc.add_paragraph()
+    third_nine.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+    run = third_nine.add_run(
+        "Bajaruvchining huquqlari: "
+    )
+    run.bold = True
+
+    third_nine.add_run("Qonunchilik talablari hamda mazkur shartnoma shartlari asosida maslahat-konsultativ xizmatlarni uslub va tadbirlarini mustaqil belgilash.")
+
+
+    third_ten = doc.add_paragraph("Maslahat-konsultativ xizmatlarni amalga oshirishda mutaxasislar guruhini mustaqil tanlash.")
+
+    third_ten.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+    third_eleven = doc.add_paragraph("Shartnomada ko\u2018rsatilgan majburiyatlarni sifatli bajarish maqsadida buyurtmachidan kerakli ma\u2019lumotlarni olish. Buyurtmachi yetarli yoki notog\u2018ri ma\u2019lumotlar taqdim qilgan taqdirda yetarli va to\u2018g\u2018ri malumot taqdim qilguniga qadar shartnomaga asosan maslahat-konsultativ xizmatlarni to\u2018xtatib turishi yoki xizmat qilishdan voz kechishga haqli.")
+
+    third_eleven.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+
+    third_tweleve = doc.add_paragraph("Bajaruvchi shartnomani bir tomonlama bekor qilishi huquqiga ega.")
+
+    third_tweleve.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('TOMONLARNING JAVOBGARLIGI')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+    fourth_one = doc.add_paragraph("4.1 Mazkur shartnomada nazarda tutilgan majburiyatlarni bajarmagan tomonlar O\u2018zbekiston Respublikasi qonunchiligi asosida javobgar bo\u2018ladilar.")
+
+    fourth_one.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+    fourth_one = doc.add_paragraph("4.2 Buyurtmachi tomonidan taqdim qilingan hujjatlar saqlanishi va butligiga Bajaruvchi javobgar bo\u2018ladi.")
+
+    fourth_one.paragraph_format.first_line_indent = Cm(1)  # 1cm ichkariga siljitish
+
+
+    fourth_one = doc.add_paragraph("4.5 Mazkur shartnoma ikki nusxada tuzilgan bo\u2018lib, uning bir nusxasi Buyurtmachida ikkinchi nusxasi bajaruvchida saqlanadi.")
+
+    fourth_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('NIZOLARNI HAL ETISH TARTIBLARI')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+
+    fivth_one = doc.add_paragraph("5.1 Taraflar o\u2018rtasidagi paydo bo\u2018lgan barcha kelishmovchiliklar mustaqil tarzda mediatsiya yo\u2018li bilan sudgacha hal etish chorasini ko\u2018rishi lozim.")
+
+    fivth_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+
+
+    fivth_one = doc.add_paragraph("5.2 Agar kelishmovchiliklar mediatsiya yo\u2018li bilan hal qilinmaydigan taqdirda, mazkur holatlar bo\u2018yicha taraflar O\u2018zbekiston Respublikasi Qonunchilikchiligiga asosan, belgilangan tartibda kelishmovchiliklarni sudga da\u2019vo ariza kiritgan holda sud orqali hal qilishlari kerak bo\u2018ladi.")
+
+    fivth_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('BOSHQA SHARTLAR')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+
+    six_one = doc.add_paragraph("Shartnoma taraflarning bevosita kelishuviga binoan bekor qilinishi mumkin. Barcha o\u2018zgartirish va qo\u2018shimchalar yozma ravishda rasmiylashtirilgan hamda har ikki taraflarning vakolatli vakillari  imzosi va muhrlari bo\u2018lgan taqdirda hisobga olinadi. Shartnomaning umumiy bahosi:")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+    run = six_one.add_run(f"{format_number_with_spaces(contract_summ)} so\u2018m ({convert_number_to_words(contract_summ)}) ({format_number_with_spaces(contract_dollar)}$).")
+    run.bold = True
+
+
+
+    six_one = doc.add_paragraph("\u201CBuyurtmachi\u201D firma to\u2018lovining ")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+    run = six_one.add_run(f"{format_number_with_spaces(contract_summ*0.1)} so\u2018m ({convert_number_to_words(contract_summ*0.1)}) ({format_number_with_spaces(contract_dollar*0.1)}$).")
+    run.bold = True
+    six_one.add_run("miqdorini Bajaruvchining hisob raqamiga o\u2018tkazgandan so\u2018ng, \u201CBajaruvchi\u201D o\u2018z zimmasiga yuklatilgan vazifani, ya\u2019ni \u201CBuyurtmachi\u201D hujjatlarini tayyorlashni boshlaydi. ")
+
+
+
+
+    six_one = doc.add_paragraph("Bakalavr va Magistraturaga hujjat topshirgan \u201CBuyurtmachilar\u201D firma to\u2018lovining qolgan")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+    run = six_one.add_run(f"{format_number_with_spaces(contract_summ*0.9)} so\u2018m ({convert_number_to_words(contract_summ*0.9)}) ({format_number_with_spaces(contract_dollar*0.9)}$).")
+    run.bold = True
+
+
+
+    six_one = doc.add_paragraph("Buyurtmachining visa olishi Bajaruvchi majburiyatlarining tugaganini bildiradi.")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+    six_one = doc.add_paragraph("Buyurtmachi qabul xatini olgandan so\u2018ng, Janubiy Koreya Elchixonasi tomonidan akkreditatsiyasidan o\u2018tgan visa markazlari orqali viza uchun kerakli hujjatlar topshiradi. Bunda viza uchun hujjatlarni to\u2018plash va tayyorlash Bajaruvchining majburiyatiga kirmaydi.")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+
+    six_one = doc.add_paragraph("Agar \u201CBuyurtmachi\u201D o\u2018qish davomida noqonuniy tarzda o\u2018qishdan chiqib ketgan holda Janubiy Koreyada yashab va ishlab qolgan taqdirda uning O\u2018zbekistondagi vakili Bajaruvchiga")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+    run = six_one.add_run(" 20 000 AQSH dollari")
+    run.bold = True
+    six_one.add_run(" to\u2018lash majburiyatini oladi.")
+
+
+
+
+    six_one = doc.add_paragraph("Agar buyurtmachi Universitet suxbatidan o\u2018ta olmagan yoki elchixonadan rad javobi olganda shartnoma bekor bo\u2018ladi va firmaga to\u2018langan  summa qaytarilmaydi.")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+
+    six_one = doc.add_paragraph("Agar shartnoma Buyurtmachining tashabusi bilan (Kimiduri kasal bo\u2018lib qolsa yoki vafot etsa, Bankshot yoki KDB Bankshot qo\u2018ya olmasa, Janubiy Koreyada o\u2018qish niyatidan qaytib qolsa, moliyaviy va boshqa har qanday sabablarga ko\u2018ra) bekor qilinsa firma to\u2018lovi qaytarilmaydi.")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('FORS-MAJOR')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+    six_one = doc.add_paragraph(" Har bir taraflar oldida o\u2018ziga bog\u2018liq bo\u2018lmagan sabalarga ko\u2018ra va yengib bo\u2018lmas  kuch mavjud bo\u2018lgan taqdirda ushbu shartnoma kiritilgan majburiyatlari bo\u2018yicha javobgar bo\u2018lmaydi. Urush e'lon qilinishi yoki boshlanishi, fuqarolar tartibsizligi, epidemiya, embargo, yer qimirlashi, suv toshqini, yong\u2018in va boshqa tabiiy ofatlar vaqtida ham majburiyatlar yuzasidan taraflar javobgar bo\u2018lmaydi.")
+    six_one.paragraph_format.first_line_indent = Cm(1) 
+
+
+
+    contract_subject = doc.add_paragraph()
+    run = contract_subject.add_run('Tomonlarning manzili va rekvizitlari')
+    run.bold = True
+    run.font.size = Pt(12)
+    contract_subject.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+
+
+
+    table = doc.add_table(rows=1, cols=2)
+    table.autofit = True
+
+    
+
+
+    table = doc.add_table(rows=7, cols=2)
+    table.autofit = False
+    table.columns[0].width = Cm(8)
+    table.columns[1].width = Cm(8)
+
+    # Jadval ichiga ma'lumotlarni kiritish
+    data = [
+        ["BAJARUVCHI", "BUYURTMACHI"],
+        ["\u201CDream International Agency\u201D XK", "F.I.O: _______________________"],
+        ["Yuridik manzil: O\u2018zbekiston Respublikasi", "Manzil: _____________________"],
+        ["Andijon Viloyati, Bo\u2018ston tumani, Lolazor ko\u2018chasi 137-uy", "___________________________"],
+        ["Tel: +998999732352", "Tel: ________________________"],
+        ["INN: 308512535", "Passport \u2116 __________________"],
+        ["Milliy Bank \u201CSayohat\u201D filiali", "Berilgan joyi: ________________"],
+    ]
+
+    # Jadval hujayralarini to‘ldirish
+    for row_idx, row_data in enumerate(data):
+        for col_idx, text in enumerate(row_data):
+            cell = table.cell(row_idx, col_idx)
+            cell.text = text
+
+    # Oxirgi qatorni q\u2018shish (direktor va buyurtmachi imzosi)
+    last_row = table.add_row().cells
+    last_row[0].text = f"Direktor: {director_name}"
+    last_row[1].text = "Buyurtmachi imzosi: __________"
+    # Hujjatni saqlash
+    file_name = f"Shartnoma_{int(time.time())}.docx"  # Har safar yangi nom
+
+    # Hujjatni saqlash
+    file_stream = BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)
+    return file_stream
